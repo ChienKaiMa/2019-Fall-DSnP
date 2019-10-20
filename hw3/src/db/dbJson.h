@@ -60,7 +60,7 @@ public:
    // return true if JSON file hasn't been read in
    bool operator !() { return !_readIn; }
    // return this if JSON file has been read in; return NLL if not.
-   operator void* () const { if (_readIn) return *this; else return NULL; }
+   operator void* () const { if (_readIn) return (void*)this; else return NULL; }
    void readIn() { _readIn = true;}
 
    // Read DBJson
