@@ -30,6 +30,23 @@ CmdParser::openDofile(const string& dof)
 {
    // TODO...
    _dofile = new ifstream(dof.c_str());
+   //
+   if (!_dofile->is_open()) {
+      delete _dofile;
+      if (!_dofileStack.empty()) {
+         _dofile = _dofileStack.top();
+      } else {
+         _dofile = NULL;
+      }
+      return false;
+   }
+   if (_dofileStack.size() == 1024) {
+      delete _dofile;
+      _dofile = NULL;
+      return false;
+   }
+   _dofileStack.push(_dofile);
+   //
    return true;
 }
 
@@ -39,7 +56,16 @@ CmdParser::closeDofile()
 {
    assert(_dofile != 0);
    // TODO...
+   
+   _dofileStack.pop();
    delete _dofile;
+   if (!_dofileStack.empty()) {
+      _dofile = _dofileStack.top();
+   } else {
+      _dofile = NULL;
+   }
+   
+   
 }
 
 // Return false if registration fails
@@ -98,6 +124,11 @@ void
 CmdParser::printHelps() const
 {
    // TODO...
+   //
+   for(CmdMap::const_iterator i = _cmdMap.begin(); i != _cmdMap.end(); ++i) {
+      (*i -> second).help();
+   }
+   //
 }
 
 void
@@ -139,8 +170,17 @@ CmdParser::parseCmd(string& option)
    string str = _history.back();
 
    // TODO...
+   //
+   string cmd;
+   size_t first = myStrGetTok(str, cmd);
+   if (!getCmd(cmd)) {
+      cerr << "Illegal command!! (" << cmd << ")" << endl;
+      return NULL;
+   }
+   if (first < str.length()) option = str.substr(first);
+   //
    assert(str[0] != 0 && str[0] != ' ');
-   return NULL;
+   return getCmd(cmd);
 }
 
 // Remove this function for TODO...
@@ -312,6 +352,21 @@ CmdParser::getCmd(string cmd)
 {
    CmdExec* e = 0;
    // TODO...
+   //
+   size_t cmdLen = cmd.length();
+   for(CmdMap::const_iterator i = _cmdMap.begin(); i != _cmdMap.end(); ++i)
+   {
+      string optCmd = i->second->getOptCmd();
+      if ((i->first).length() + optCmd.length() < cmdLen)   continue;
+      if ((i->first).length() > cmdLen)   continue;
+      string fullCmd = (i->first + optCmd);
+      for (size_t idx=0; idx < cmdLen; ++idx) {
+         if (tolower(fullCmd[idx]) != tolower(cmd[idx])) {
+            break;
+         } else if (idx == cmdLen-1) return i->second;
+      }
+   }   
+   //
    return e;
 }
 
