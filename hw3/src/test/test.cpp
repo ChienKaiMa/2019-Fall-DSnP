@@ -49,5 +49,52 @@ main(int argc, char** argv)
    // TODO
    // Insert what you want to test here by calling DBJson's member functions
 
+   cout << "========================" << endl;
+   cout << " Sum of JSON object" << endl;
+   cout << "========================" << endl;
+   cout << dbjson.sum() << endl;
+
+   cout << "========================" << endl;
+   cout << " Ave of JSON object" << endl;
+   cout << "========================" << endl;
+   cout << dbjson.ave() << endl;
+
+   cout << "========================" << endl;
+   cout << " Max of JSON object" << endl;
+   cout << "========================" << endl;
+   size_t maxI;
+   cout << dbjson.max(maxI) << endl;
+
+   cout << "========================" << endl;
+   cout << " Min of JSON object" << endl;
+   cout << "========================" << endl;
+   size_t minI;
+   cout << dbjson.min(minI) << endl;
+
+   cout << "========================" << endl;
+   cout << " Append JSON object" << endl;
+   cout << "========================" << endl;
+   cout << dbjson.add(DBJsonElem("Ric", 100)) << endl;
+
+   cout << "========================" << endl;
+   cout << " SortKey JSON object" << endl;
+   cout << "========================" << endl;
+   const DBSortKey kea;
+   dbjson.sort(kea);
+   cout << dbjson << endl;
+
+   cout << "========================" << endl;
+   cout << " SortValue JSON object" << endl;
+   cout << "========================" << endl;
+   const DBSortValue vala;
+   dbjson.sort(vala);
+   cout << dbjson << endl;
+
+   cout << "========================" << endl;
+   cout << " Reset JSON object" << endl;
+   cout << "========================" << endl;
+   dbjson.reset();
+   cout << dbjson << endl; 
+
    return 0;
 }
