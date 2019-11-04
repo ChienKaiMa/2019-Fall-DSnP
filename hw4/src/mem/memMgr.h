@@ -13,6 +13,7 @@
 #include <iostream>
 #include <iomanip>
 #include <stdlib.h>
+#include <math.h>
 
 using namespace std;
 
@@ -47,11 +48,11 @@ private:                                                                    \
 //
 // To promote 't' to the nearest multiple of SIZE_T; 
 // e.g. Let SIZE_T = 8;  toSizeT(7) = 8, toSizeT(12) = 16
-#define toSizeT(t)      0  // TODO
+#define toSizeT(t)      (ceil(double(t) / SIZE_T)*SIZE_T)  // TODO // Not sure
 //
 // To demote 't' to the nearest multiple of SIZE_T
 // e.g. Let SIZE_T = 8;  downtoSizeT(9) = 8, downtoSizeT(100) = 96
-#define downtoSizeT(t)  0  // TODO
+#define downtoSizeT(t)  (floor(double(t) / SIZE_T)*SIZE_T)  // TODO // Not sure
 
 // R_SIZE is the size of the recycle list
 #define R_SIZE 256
@@ -89,7 +90,12 @@ class MemBlock
    // 4. Return false if not enough memory
    bool getMem(size_t t, T*& ret) {
       // TODO
-      return true;
+      //
+      t = toSizeT(t);
+      ret = (T*) _ptr;
+      if (getRemainSize() < t)   return false;
+      else { _ptr += t; return true; }
+      //
    }
    size_t getRemainSize() const { return size_t(_end - _ptr); }
       
@@ -122,16 +128,30 @@ class MemRecycleList
    // pop out the first element in the recycle list
    T* popFront() {
       // TODO
-      return 0;
+      // Not sure
+      T* tmp = _first;
+      _first = *((T**) _first);
+      return tmp;
+      //
    }
    // push the element 'p' to the beginning of the recycle list
    void  pushFront(T* p) {
       // TODO
+      // Maybe
+      if (_first != 0)  { *((T**) p) = _first; }
+      else { *((T**) p) = 0; }
+      _first = p;
+      //
    }
    // Release the memory occupied by the recycle list(s)
    // DO NOT release the memory occupied by MemMgr/MemBlock
    void reset() {
       // TODO
+      //
+      while (_first != 0) {
+         _first = *((T**) _first);
+      }
+      //
    }
 
    // Helper functions
@@ -139,7 +159,15 @@ class MemRecycleList
    // count the number of elements in the recycle list
    size_t numElm() const {
       // TODO
-      return 0;
+      // Maybe
+      size_t countElm = 0;
+      T* _elm = _first;
+      while (_elm != 0) {
+         _elm = *((T**) _elm);
+         ++countElm;
+      }
+      return countElm;
+      //
    }
 
    // Data members
