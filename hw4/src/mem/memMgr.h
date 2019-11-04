@@ -236,7 +236,9 @@ public:
       // TODO
       // Get the array size 'n' stored by system,
       // which is also the _recycleList index
-      size_t n = 0;
+      //
+      size_t n = *((size_t*) p);
+      //
       #ifdef MEM_DEBUG
       cout << ">> Array size = " << n << endl;
       cout << "Recycling " << p << " to _recycleList[" << n << "]" << endl;
@@ -287,7 +289,7 @@ private:
       assert(t % SIZE_T == 0);
       assert(t >= S);
       // TODO
-      return 0;
+      return (t-SIZE_T)/S; // Done?
    }
    // Go through _recycleList[m], its _nextList, and _nexList->_nextList, etc,
    //    to find a recycle list whose "_arrSize" == "n"
@@ -300,7 +302,17 @@ private:
    MemRecycleList<T>* getMemRecycleList(size_t n) {
       size_t m = n % R_SIZE;
       // TODO
-      return 0;
+      //
+      MemRecycleList<T>* currentList = &_recycleList[m];
+      while (n != currentList->_arrSize) {
+         if (currentList->_nextList == 0) {
+            MemRecycleList<T>* myNextList = new MemRecycleList<T>(n);
+            currentList->_nextList = myNextList;
+            currentList = currentList->_nextList;
+         }  else  currentList = currentList->_nextList;
+      }
+      return currentList;
+      // Maybe it's done
    }
    // t is the #Bytes requested from new or new[]
    // Note: Make sure the returned memory is a multiple of SIZE_T
@@ -352,7 +364,15 @@ private:
    // Get the currently allocated number of MemBlock's
    size_t getNumBlocks() const {
       // TODO
-      return 0;
+      //
+      size_t numOfBlocks = 1;
+      MemBlock<T>* currentBlock = _activeBlock;
+      while (currentBlock->_nextBlock != 0) {
+         numOfBlocks += 1;
+         currentBlock = currentBlock->_nextBlock;
+      }
+      return numOfBlocks;
+      //
    }
 
 };
