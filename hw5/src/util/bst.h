@@ -25,12 +25,13 @@ class BSTreeNode
 {
    // TODO: design your own class!!
    friend class BSTree<T>;
-   friend class BSTree:iterator;
+   friend class BSTree<T>::iterator;
 
-   BSTreeNode(const T& d, BSTreeNode<T>* l = 0, BSTreeNode<T>* r = 0):
-      _data(d), _left(l), _right(r) {}
+   BSTreeNode(const T& d, BSTreeNode<T>* p = 0, BSTreeNode<T>* l = 0, BSTreeNode<T>* r = 0) :
+      _data(d), _parent(p), _left(l), _right(r) {}
 
    T _data;
+   BSTreeNode<T>* _parent;
    BSTreeNode<T>* _left;
    BSTreeNode<T>* _right;
 };
@@ -74,7 +75,7 @@ class BSTree
 iterator begin() const {}
 iterator end() const {}
 bool empty() const {
-   return (_root->_left == _root && _root->_right == _root);
+   return (_root == 0);
 }
 
 size_t size() const {
@@ -105,13 +106,23 @@ iterator find(const T& x) {
 
 }
 
-void clear() {}
+void print() const {
+   string myBlank = "";
+   print(_root, myBlank);
+}
 
-void sort() const {}
-void print() const {}
+void print(BSTreeNode<T>* myRoot, string myBlank) const {
+   cerr << myBlank << myRoot->_data << endl;
+   myBlank = myBlank + "  ";
+   if (myRoot->_left != _root) { print(myRoot->_left, myBlank); }
+   else { cerr << myBlank << "[0]" << endl; }
+   if (myRoot->_right != _root) { print(myRoot->_right, myBlank); }
+   else { cerr << myBlank << "[0]" << endl; }
+}
 
 private:
    BSTreeNode<T>* _root;
+   size_t _size;
 };
 
 #endif // BST_H
