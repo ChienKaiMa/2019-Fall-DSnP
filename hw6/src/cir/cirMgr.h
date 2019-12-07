@@ -24,25 +24,51 @@ extern CirMgr *cirMgr;
 class CirMgr
 {
 public:
-   CirMgr(){}
-   ~CirMgr() {}
+  CirMgr() {}
+  ~CirMgr() { reset(); }
 
-   // Access functions
-   // return '0' if "gid" corresponds to an undefined gate.
-   CirGate* getGate(unsigned gid) const { return 0; }
+  // Access functions
+  // return '0' if "gid" corresponds to an undefined gate.
+  CirGate *getGate(unsigned gid) const
+  {
+    if (gid < _allGates.capacity()) {
+      return _allGates[gid];
+    } else {
+      return 0;
+    }
+  }
 
-   // Member functions about circuit construction
-   bool readCircuit(const string&);
+  // Member functions about circuit construction
+  bool readCircuit(const string &);
+  bool readHeader(string &);
+  bool readInputs(string &);
+  bool readOutputs(string &, const int &);
+  bool readAiGates(string &);
+  bool readSymbols(string &);
+  bool readComment(string &);
+  bool connectGates();
+  void sortGates();
+  void reset();
+  
+  // Member functions about circuit reporting
+  void printSummary() const;
+  void printNetlist() const;
+  void printPIs() const;
+  void printPOs() const;
+  void printFloatGates() const;
+  void writeAag(ostream &) const;
 
-   // Member functions about circuit reporting
-   void printSummary() const;
-   void printNetlist() const;
-   void printPIs() const;
-   void printPOs() const;
-   void printFloatGates() const;
-   void writeAag(ostream&) const;
+  // Depth-first search
+  void dfs() const;
+  CirGate* dfsVisit(CirGate*) const;
 
 private:
+  GateList _unordered;
+  GateList _allGates;
+  GateList _inputGates;
+  GateList _outputGates;
+  IdList _aigGates;
+  int _maxIdx, _inputNum, _latchNum, _outputNum, _andGateNum;
 };
 
 #endif // CIR_MGR_H
