@@ -166,8 +166,7 @@ CirMgr::readCircuit(const string& fileName)
    bool isComment = false;
 
    // readHeader
-   getline(ifs, line);
-   if (!readHeader(line)) {
+   if (!readHeader(ifs)) {
       return false;
    }
    ++lineNo;
@@ -175,6 +174,7 @@ CirMgr::readCircuit(const string& fileName)
    // readInputs
    for (int i=0; i < _inputNum; ++i) {
       getline(ifs, line);
+      colNo = 0;
       if(!readInputs(line)) {
          return false;
       }
@@ -185,6 +185,7 @@ CirMgr::readCircuit(const string& fileName)
    // readOutputs
    for (int i=0; i < _outputNum; ++i) {
       getline(ifs, line);
+      colNo = 0;
       if(!readOutputs(line, _maxIdx+1+i)) {
          return false;
       }
@@ -194,6 +195,7 @@ CirMgr::readCircuit(const string& fileName)
    // readAiGates
    for (int i=0; i < _andGateNum; ++i) {
       getline(ifs, line);
+      colNo = 0;
       if(!readAiGates(line)) {
          return false;
       }
@@ -202,6 +204,7 @@ CirMgr::readCircuit(const string& fileName)
    
    // readSymbols and read comments
    getline(ifs, line);
+   colNo = 0;
    while (line != "") {
       // Not sure what to do with comments
       if (isComment || line == "c") {
@@ -224,55 +227,91 @@ CirMgr::readCircuit(const string& fileName)
 // Handle parsing error messages
 // Use enum CirParseError (bool)
 bool
-CirMgr::readHeader(string& header)
+CirMgr::readHeader(istream& ifs)
 {
-   // Should be optimized
    // TODO: EXTRA_SPACE, MISSING_NUM errMsg and colNo
-   string id;
-   string line;
-   line = header.substr(myStrGetTok(header, id));
-   if (id == "aag") {
-      string m, i, l, o, a;
-      if (line != "") {
-         line = line.substr(myStrGetTok(line, m));
-         if (!myStr2Int(m, _maxIdx)) {
-            errMsg = m;
-            return parseError(ILLEGAL_NUM);
-         }
-         line = line.substr(myStrGetTok(line, i));
-         if (!myStr2Int(i, _inputNum)) {
-            errMsg = i;
-            return parseError(ILLEGAL_NUM);
-         }
-         line = line.substr(myStrGetTok(line, l));
-         if (!myStr2Int(l, _latchNum)) {
-            errMsg = l;
-            return parseError(ILLEGAL_NUM);
-         }
-         line = line.substr(myStrGetTok(line, o));
-         if (!myStr2Int(o, _outputNum)) {
-            errMsg = o;
-            return parseError(ILLEGAL_NUM);
-         }
-         myStrGetTok(line, a);
-         if (!myStr2Int(a, _andGateNum)) {
-            errMsg = a;
-            return parseError(ILLEGAL_NUM);
-         }
-         _allGates.reserve(_inputNum + _outputNum + _latchNum + _andGateNum + 1);
-         CirGate* cg = new ConstGate(0);
-         _unordered.push_back(cg);
-         _allGates[0] = cg;
-         return true;
-      } else {
-         // TODO
-         colNo = 0;
-         errMsg = "";
-         return parseError(MISSING_NUM); }
-   } else {
+   
+   /*******************************/
+   /*    Checking identifier      */
+   /*******************************/
+   bool isSpace = false;
+   buf[colNo] = ifs.get();
+   if (buf[0] == ' ') {
+      return parseError(EXTRA_SPACE);
+   } else if (buf[0] == '\t') {
+      errInt = '\t';
+      return parseError(ILLEGAL_WSPACE);
+   } else if (buf[0] == '\n') {
+      errInt = '\n';
+      return parseError(ILLEGAL_WSPACE);
+   }
+   while (!isSpace) {
+      ++colNo;
+      buf[colNo] = ifs.get();
+      if (buf[colNo] == '\t') {
+         errInt = '\t';
+         return parseError(ILLEGAL_WSPACE);
+      } else if (buf[colNo] == '\n') {
+         errInt = '\n';
+         return parseError(ILLEGAL_WSPACE);
+      } else if (isdigit(buf[colNo])) {
+         return parseError(MISSING_SPACE);
+      } else if (buf[colNo] == ' ') {
+         isSpace = true;
+      }
+   }
+   string id(buf, colNo);
+   if (id != "aag") {
       errMsg = id;
+      cout << id << endl;
       return parseError(ILLEGAL_IDENTIFIER);
    }
+
+   /*******************************/
+   /*       Getting MILOA         */
+   /*******************************/
+   string line;
+   getline(ifs, line);
+   string m, i, l, o, a;
+   if (line != "") {
+      line = line.substr(myStrGetTok(line, m));
+      if (!myStr2Int(m, _maxIdx)) {
+         errMsg = m;
+         return parseError(ILLEGAL_NUM);
+      }
+      line = line.substr(myStrGetTok(line, i));
+      if (!myStr2Int(i, _inputNum)) {
+         errMsg = i;
+         return parseError(ILLEGAL_NUM);
+      }
+      line = line.substr(myStrGetTok(line, l));
+      if (!myStr2Int(l, _latchNum)) {
+         errMsg = l;
+         return parseError(ILLEGAL_NUM);
+      }
+      line = line.substr(myStrGetTok(line, o));
+      if (!myStr2Int(o, _outputNum)) {
+         errMsg = o;
+         return parseError(ILLEGAL_NUM);
+      }
+      myStrGetTok(line, a);
+      if (!myStr2Int(a, _andGateNum)) {
+         errMsg = a;
+         return parseError(ILLEGAL_NUM);
+      }
+      for (int i=0; i<_maxIdx+_outputNum+1; ++i) {
+         _allGates.push_back(0);
+      }
+      CirGate* cg = new ConstGate(0);
+      _unordered.push_back(cg);
+      _allGates[0] = cg;
+      return true;
+   } else {
+      // TODO
+      colNo = 0;
+      errMsg = "";
+      return parseError(MISSING_NUM);
+   }   
 }
 
 bool
@@ -393,16 +432,42 @@ CirMgr::readSymbols(string& line)
       gate = gate.substr(1);
       myStr2Int(gate, gateIdx);
       CirGate* thisGate = cirMgr->_inputGates[gateIdx];
+      if (thisGate->_symbol != "") {
+         errMsg = "i";
+         errInt = gateIdx;
+         return parseError(REDEF_SYMBOLIC_NAME);
+      }
       myStrGetTok(line, symbol);
+      for (size_t i=0; i<symbol.length(); ++i) {
+         if (!isprint(symbol[i])) {
+            colNo = 3+i;
+            errInt = symbol[i];
+            return parseError(ILLEGAL_SYMBOL_NAME);
+         }
+      }
       thisGate->_symbol = symbol;
    } else if (gate.substr(0, 1) == "o") {
       gate = gate.substr(1);
       myStr2Int(gate, gateIdx);
       CirGate* thisGate = cirMgr->_outputGates[gateIdx];
+      if (thisGate->_symbol != "") {
+         errMsg = "o";
+         errInt = gateIdx;
+         return parseError(REDEF_SYMBOLIC_NAME);
+      }
       myStrGetTok(line, symbol);
+      for (size_t i=0; i<symbol.length(); ++i) {
+         if (!isprint(symbol[i])) {
+            colNo = 3+i;
+            errInt = symbol[i];
+            return parseError(ILLEGAL_SYMBOL_NAME);
+         }
+      }
       thisGate->_symbol = symbol;
    } else {
-      return parseError(ILLEGAL_IDENTIFIER);
+      errMsg = gate.substr(0, 1);
+      colNo = 0;
+      return parseError(ILLEGAL_SYMBOL_TYPE);
    }   
    return true;
 }
@@ -417,6 +482,7 @@ CirMgr::connectGates()
       if (faninGate == 0) {
          CirGate* undef = new UndefGate(thisGateId);
          _unordered.push_back(undef);
+         _float1.push_back(_outputGates[i]);
          _allGates[thisGateId] = undef;
          faninGate = _allGates[thisGateId];
          ((OutputGate*)_outputGates[i])->isUndef[0] = 1;
@@ -432,6 +498,7 @@ CirMgr::connectGates()
       if (faninGate1 == 0) {
          CirGate* undef = new UndefGate(gateId1);
          _unordered.push_back(undef);
+         _float1.push_back(thisGate);
          _allGates[gateId1] = undef;
          faninGate1 = _allGates[gateId1];
          ((AndGate*)thisGate)->isUndef[0] = 1;
@@ -450,6 +517,17 @@ CirMgr::connectGates()
       faninGate2->_fanout.push_back(thisGate);
       faninGate1->_fanoutNum.push_back(thisGate->_gateId * 2 + ((AndGate*) thisGate) -> _faninNum[0] % 2);
       faninGate2->_fanoutNum.push_back(thisGate->_gateId * 2 + ((AndGate*) thisGate) -> _faninNum[1] % 2);
+   }
+   for (int i=0; i<_inputNum; ++i) {
+      if (_inputGates[i]->_fanout.empty()) {
+         _float2.push_back(_inputGates[i]);
+      }
+   }
+   for (int i=0; i<_andGateNum; ++i) {
+      CirGate* thisGate = _allGates[_aigGates[i]];
+      if (thisGate->_fanout.empty()) {
+         _float2.push_back(thisGate);
+      }
    }
    sortGates();
    return true;
@@ -535,6 +613,39 @@ void
 CirMgr::printFloatGates() const
 {
    // TODO
+   /*
+   A gate that cannot reach any PO
+(c) A gate that cannot be reached from PI
+(b) A gate that cannot be reached from any PI and PO
+(d) A gate with a floating fanin
+   */
+   if (!_float1.empty()) {
+      cout << "Gates with floating fanin(s):";
+      for (size_t i=0; i<_float1.size(); ++i) {
+         cout << " " << _float1[i]->_gateId;
+      }
+   }
+   if (!_float2.empty()) {
+      cout << "Gates defined but not used  :";
+      for (size_t i=0; i<_float2.size(); ++i) {
+         cout << " " << _float2[i]->_gateId;
+      }
+   }
+   if (!_float3.empty()) {
+      cout << "";
+      for (size_t i=0; i<_float3.size(); ++i) {
+         cout << " " << _float3[i]->_gateId;
+      }
+   }
+   if (!_float4.empty()) {
+      cout << "";
+      for (size_t i=0; i<_float4.size(); ++i) {
+         cout << " " << _float4[i]->_gateId;
+      }
+   }
+   if (!(_float1.empty() && _float2.empty() && _float3.empty() && _float4.empty())) {
+      cout << endl;
+   }
 }
 
 void

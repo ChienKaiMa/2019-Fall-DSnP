@@ -40,7 +40,7 @@ public:
 
   // Member functions about circuit construction
   bool readCircuit(const string &);
-  bool readHeader(string &);
+  bool readHeader(istream&);
   bool readInputs(string &);
   bool readOutputs(string &, const int &);
   bool readAiGates(string &);
@@ -67,6 +67,10 @@ private:
   GateList _allGates;
   GateList _inputGates;
   GateList _outputGates;
+  GateList _float1;
+  GateList _float2;
+  GateList _float3;
+  GateList _float4;
   IdList _aigGates;
   int _maxIdx, _inputNum, _latchNum, _outputNum, _andGateNum;
 };
