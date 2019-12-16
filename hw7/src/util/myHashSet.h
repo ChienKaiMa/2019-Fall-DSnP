@@ -46,12 +46,63 @@ public:
    class iterator
    {
       friend class HashSet<Data>;
-
    public:
-      const Data& operator * () const { return Data(); }
-      iterator& operator ++ () { return (*this); }
-      bool operator != (const iterator& i) const { return true; }
+      iterator(Data* n = 0, vector<Data>* b = 0, size_t nb = 0, size_t mbn = 0, size_t idx = 0) : _node(n), _buckets(b), _numBuckets(nb), _myBucketNum(mbn), _idxInBucket(idx) {}
+      iterator(const iterator& i, vector<Data>* b = 0, size_t nb = 0, size_t mbn = 0, size_t idx = 0) : _node(i._node), _buckets(b), _numBuckets(nb), _myBucketNum(mbn),_idxInBucket(idx) {}
+      ~iterator() {}
+
+      const Data& operator * () const { return *_node; }
+      iterator& operator ++ () {
+         // bucket is end
+         // If not last element
+         size_t mySize = _buckets[_myBucketNum].size();
+         if (mySize != _idxInBucket + 1) {
+            // Next element in the bucket
+            _node += 1; _idxInBucket += 1; return (*this);
+         } else {
+            if (_myBucketNum == _numBuckets - 1) {
+               // End of all buckets
+               _idxInBucket = -1;
+               return (*this);
+            }
+            while (_myBucketNum != _numBuckets - 1) {
+               // while not last bucket
+               ++_myBucketNum;
+               if (_buckets[_myBucketNum].size() != 0) {
+                  // if has element
+                  _node = &(_buckets[_myBucketNum][0]);
+                  _idxInBucket = 0;
+                  return (*this);
+               }
+            }
+            // if last bucket
+            if (_buckets[_myBucketNum].size() != 0) {
+               // if has element
+               _node = &(_buckets[_myBucketNum][0]);
+               _idxInBucket = 0;
+               return (*this);
+            } else {
+               // End of all buckets
+               _idxInBucket = -1;
+               return (*this);
+            }
+         }
+      }
+      iterator operator ++ (int) { iterator tmp = (*this);  ++(*this); return tmp; }
+      iterator& operator -- () { _node -= 1; return (*this); }
+      iterator operator -- (int) { iterator tmp = (*this);  --(*this); return tmp; }
+
+      iterator& operator = (const iterator& i) const { return i; }
+      bool operator == (const iterator& i) const { return (i._node == _node && i._idxInBucket == _idxInBucket); }
+      bool operator != (const iterator& i) const { return !(i._node == _node && i._idxInBucket == _idxInBucket); }
    private:
+      Data* _node;
+      vector<Data>* _buckets;
+      size_t _numBuckets;
+      size_t _myBucketNum;
+      size_t _idxInBucket;
+      size_t bucketNum(const Data& d) const {
+      return (d() % _numBuckets); }
    };
 
    void init(size_t b) { _numBuckets = b; _buckets = new vector<Data>[b]; }
@@ -70,9 +121,24 @@ public:
    // TODO: implement these functions
    //
    // Point to the first valid data
-   iterator begin() const { return iterator(); }
+   iterator begin() const {
+      for (size_t i=0; i<_numBuckets; ++i) {
+         if (!_buckets[i].empty()) {
+            return iterator(&_buckets[i][0], _buckets, _numBuckets, i, 0);
+         }
+      }
+      return iterator();
+   }
    // Pass the end
-   iterator end() const { return iterator(); }
+   iterator end() const {
+      for (size_t i=_numBuckets-1; i>=0; --i) {
+         if (!_buckets[i].empty()) {
+            size_t idx = _buckets[i].size() - 1;
+            return iterator(&_buckets[i][idx], _buckets, _numBuckets, _numBuckets-1, -1);
+         }
+      }
+      return iterator();
+   }
    // return true if no valid data
    bool empty() const {
       // Done
@@ -152,7 +218,16 @@ public:
 
    // return true if removed successfully (i.e. d is in the hash)
    // return fasle otherwise (i.e. nothing is removed)
-   bool remove(const Data& d) { return false; }
+   bool remove(const Data& d) {
+      vector<Data>& myBucket = _buckets[bucketNum(d)];
+      for (size_t i=0; i<myBucket.size(); ++i) {
+         if (d == myBucket[i]) {
+            myBucket.erase(myBucket.begin()+i);
+            return true;
+         }
+      }
+      return false;
+   }
 
 private:
    // Do not add any extra data member
