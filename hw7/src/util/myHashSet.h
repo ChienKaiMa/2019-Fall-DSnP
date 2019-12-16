@@ -131,7 +131,7 @@ public:
    }
    // Pass the end
    iterator end() const {
-      for (size_t i=_numBuckets-1; i>=0; --i) {
+      for (int i=_numBuckets-1; i>=0; --i) {
          if (!_buckets[i].empty()) {
             size_t idx = _buckets[i].size() - 1;
             return iterator(&_buckets[i][idx], _buckets, _numBuckets, _numBuckets-1, -1);
