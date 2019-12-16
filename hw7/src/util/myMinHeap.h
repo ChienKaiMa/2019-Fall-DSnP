@@ -80,13 +80,13 @@ public:
             if (_data[t-1] < _data[t]) {
                --t;
             }
-         }
-         if (_data[n-1] < _data[t]) { break; }
-         _data[p] = _data[t];
-         p = t;
-         t = 2*p;
+            if (_data[n-1] < _data[t]) { break; }
+            _data[p] = _data[t];
+            p = t;
+            t = 2*(p+1);
+         } else { break; }         
       }
-      _data[p] = _data[t];
+      _data[p] = _data[n-1];
       _data.pop_back();
    }
 
