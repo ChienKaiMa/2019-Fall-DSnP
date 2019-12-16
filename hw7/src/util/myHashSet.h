@@ -74,28 +74,81 @@ public:
    // Pass the end
    iterator end() const { return iterator(); }
    // return true if no valid data
-   bool empty() const { return true; }
+   bool empty() const {
+      // Done
+      for (size_t i=0; i<_numBuckets; ++i) {
+         if (!_buckets[i].empty()) {
+            return false;
+         }
+      }
+      return true;
+   }
    // number of valid data
-   size_t size() const { size_t s = 0; return s; }
+   size_t size() const {
+      // Done
+      size_t s = 0;
+      for (size_t i=0; i<_numBuckets; ++i) {
+         s += (_buckets[i].size());
+      }
+      return s;
+   }
 
    // check if d is in the hash...
    // if yes, return true;
    // else return false;
-   bool check(const Data& d) const { return false; }
+   bool check(const Data& d) const {
+      // Done
+      vector<Data>& myBucket = _buckets[bucketNum(d)];
+      for (size_t i=0; i<myBucket.size(); ++i) {
+         if (d == myBucket[i]) {
+            return true;
+         }
+      }
+      return false;
+   }
 
    // query if d is in the hash...
    // if yes, replace d with the data in the hash and return true;
    // else return false;
-   bool query(Data& d) const { return false; }
+   bool query(Data& d) const {
+      // Done
+      vector<Data>& myBucket = _buckets[bucketNum(d)];
+      for (size_t i=0; i<myBucket.size(); ++i) {
+         if (d == myBucket[i]) {
+            d = myBucket[i];
+            return true;
+         }
+      }
+      return false;
+   }
 
    // update the entry in hash that is equal to d (i.e. == return true)
    // if found, update that entry with d and return true;
    // else insert d into hash as a new entry and return false;
-   bool update(const Data& d) { return false; }
+   bool update(const Data& d) {
+      // Done
+      vector<Data>& myBucket = _buckets[bucketNum(d)];
+      for (size_t i=0; i<myBucket.size(); ++i) {
+         if (d == myBucket[i]) {
+            myBucket[i] = d;
+            return true;
+         }
+      }
+      insert(d);
+      return false;
+   }
 
    // return true if inserted successfully (i.e. d is not in the hash)
    // return false is d is already in the hash ==> will not insert
-   bool insert(const Data& d) { return true; }
+   bool insert(const Data& d) {
+      // Done
+      if (check(d)) {
+         return false;
+      } else {
+         (_buckets[bucketNum(d)]).push_back(d);
+         return true;
+      }
+   }
 
    // return true if removed successfully (i.e. d is in the hash)
    // return fasle otherwise (i.e. nothing is removed)
