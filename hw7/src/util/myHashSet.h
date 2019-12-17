@@ -222,7 +222,9 @@ public:
       vector<Data>& myBucket = _buckets[bucketNum(d)];
       for (size_t i=0; i<myBucket.size(); ++i) {
          if (d == myBucket[i]) {
-            myBucket.erase(myBucket.begin()+i);
+            // myBucket.erase(myBucket.begin()+i);
+            myBucket[i] = myBucket[myBucket.size()-1];
+            myBucket.pop_back();
             return true;
          }
       }
