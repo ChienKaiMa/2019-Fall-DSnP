@@ -29,6 +29,17 @@ extern CirMgr *cirMgr;
 void
 CirGate::reportGate() const
 {
+   cout << "================================================================================" << endl;
+   cout << "= " << getTypeStr() << "(" << _gateId << ")";
+   if (_mySymbol.empty()) {
+      cout << ", line " << _lineNo << endl;
+   } else {
+      cout << "\"" << _mySymbol << "\", line " << _lineNo
+       << endl;
+   }
+   cout << "= FECs: " << "TODO: printFECGroups" << endl;
+   cout << "= Value: " << "TODO: printSIMValues" << endl;
+   cout << "================================================================================" << endl;
 }
 
 void
@@ -41,5 +52,22 @@ void
 CirGate::reportFanout(int level) const
 {
    assert (level >= 0);
+}
+
+void
+AigGate::printGate() const
+{
+   cout << "AIG " << _gateId << " ";
+   if (_fanin[0].gate()->isUndef()) { cout << "*"; }
+   if (_fanin[0].isInv()) { cout << "!"; }
+   cout << (_fanin[0].gate())->getGateId() << " ";
+   if (_fanin[1].gate()->isUndef()) { cout << "*"; }
+   if (_fanin[1].isInv()) { cout << "!"; }
+   cout << (_fanin[1].gate())->getGateId();
+   if (_mySymbol.empty()) {
+     cout << endl;
+   } else {
+     cout << " (" << _mySymbol << ")" << endl;
+   }
 }
 
