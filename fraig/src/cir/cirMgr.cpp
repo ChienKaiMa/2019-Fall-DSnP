@@ -198,7 +198,7 @@ CirMgr::readCircuit(const string& fileName)
       ifs >> literal[0];
       // TODO
       CirGate* po = new PoGate(_miloa[0]+1 + i, lineNo+1);
-      po->_fanin.push_back(AigGateV((CirGate*)(literal[0] / 2), (size_t)(literal[0]%2)));
+      po->_fanin.push_back(AigGateV((CirGate*)(literal[0]), (size_t)0));
       _gateList[_miloa[0]+1 + i] = po;
       _poList.push_back(_miloa[0]+1 + i);
       ++lineNo;
@@ -210,8 +210,8 @@ CirMgr::readCircuit(const string& fileName)
       // TODO
       literal[0] /= 2;
       CirGate* aig = new AigGate(literal[0], lineNo+1);
-      aig->_fanin.push_back(AigGateV((CirGate*)(literal[1] / 2), (size_t)(literal[1]%2)));
-      aig->_fanin.push_back(AigGateV((CirGate*)(literal[2] / 2), (size_t)(literal[2]%2)));
+      aig->_fanin.push_back(AigGateV((CirGate*)(literal[1]), (size_t)0));
+      aig->_fanin.push_back(AigGateV((CirGate*)(literal[2]), (size_t)0));
       _gateList[literal[0]] = aig;
       _aigList.push_back(literal[0]);
       ++lineNo;
@@ -254,7 +254,7 @@ CirMgr::readCircuit(const string& fileName)
    connect();
 
    // Generate _dfsList
-   // genDFSList();
+   genDFSList();
    return true;
 }
 
@@ -263,45 +263,11 @@ CirMgr::connect()
 {
    // Connect Po to its fanin
    for (int i=0; i<_miloa[3]; ++i) {
-      CirGate* myPo = getGate(_poList[i]);
-      size_t poFaninId = (size_t)(myPo->_fanin[0].gate());
-      CirGate* faninGate = getGate(poFaninId);
-      if (faninGate == 0) {
-         CirGate* undef = new UndefGate(poFaninId);
-         faninGate = undef;
-         _gateList[poFaninId] = faninGate;
-         myPo->_fanin[0] = AigGateV(faninGate, 0);
-         _floatFanIns.push_back(_poList[i]);
-      } else {
-         bool isInv = myPo->_fanin[0].isInv();
-         myPo->_fanin[0] = AigGateV(faninGate, isInv);
-      }
-      faninGate->_fanout.push_back(myPo);
+      connectPo(i);
    }
    // Connect Aig to its fanin
    for (int i=0; i<_miloa[4]; ++i) {
-      CirGate* myAig = getGate(_aigList[i]);
-      size_t aigFaninId;
-      CirGate* faninGate;
-      bool isFloat = false;
-      for (int j=0; j<2; ++j) {
-         aigFaninId = (size_t)(myAig->_fanin[j].gate());
-         faninGate = getGate(aigFaninId);
-         if (faninGate == 0) {
-            CirGate* undef = new UndefGate(aigFaninId);
-            faninGate = undef;
-            _gateList[aigFaninId] = faninGate;
-            // You don't want to push_back the floating gate twice
-            if (!isFloat) {
-               _floatFanIns.push_back(_aigList[i]);
-               isFloat = true;
-            }
-         } else {
-            bool isInv = myAig->_fanin[j].isInv();
-            myAig->_fanin[j] = AigGateV(faninGate, isInv);
-         }
-         faninGate->_fanout.push_back(myAig);
-      }
+      connectAig(i);
    }
 
    // Check for unused gates
@@ -316,6 +282,54 @@ CirMgr::connect()
       if (myAig->_fanout.empty()) {
          _unused.push_back(_aigList[i]);
       }
+   }
+}
+
+void
+CirMgr::connectPo(int idx)
+{
+   CirGate* myPo = getGate(_poList[idx]);
+   size_t poFaninId = (size_t)(myPo->_fanin[0].gate());
+   poFaninId /= 2;
+   CirGate* faninGate = getGate(poFaninId);
+   if (faninGate == 0) {
+      CirGate* undef = new UndefGate(poFaninId);
+      faninGate = undef;
+      _gateList[poFaninId] = faninGate;
+      myPo->_fanin[0] = AigGateV(faninGate, 0);
+      _floatFanIns.push_back(_poList[idx]);
+   } else {
+      bool isInv = myPo->_fanin[0].isInv();
+      myPo->_fanin[0] = AigGateV(faninGate, isInv);
+   }
+   faninGate->_fanout.push_back(myPo);
+}
+
+void
+CirMgr::connectAig(int idx)
+{
+   CirGate* myAig = getGate(_aigList[idx]);
+   size_t aigFaninId;
+   CirGate* faninGate;
+   bool isFloat = false;
+   for (int j=0; j<2; ++j) {
+      aigFaninId = (size_t)(myAig->_fanin[j].gate());
+      aigFaninId /= 2;
+      faninGate = getGate(aigFaninId);
+      if (faninGate == 0) {
+         CirGate* undef = new UndefGate(aigFaninId);
+         faninGate = undef;
+         _gateList[aigFaninId] = faninGate;
+         // You don't want to push_back the floating gate twice
+         if (!isFloat) {
+            _floatFanIns.push_back(_aigList[idx]);
+            isFloat = true;
+         }
+      } else {
+         bool isInv = myAig->_fanin[j].isInv();
+         myAig->_fanin[j] = AigGateV(faninGate, isInv);
+      }
+      faninGate->_fanout.push_back(myAig);
    }
 }
 
@@ -342,10 +356,10 @@ CirMgr::dfsVisit(CirGate* start)
    if (start->getTypeStr() == "UNDEF") {
       return 0;
    } else if (start->getTypeStr() == "PO") {
-      dfsVisit(((PoGate*)start)->_fanin[0].gate());
+      dfsVisit(start->_fanin[0].gate());
    } else if (start->getTypeStr() == "AIG") {
-      dfsVisit(((AigGate*)start)->_fanin[0].gate());
-      dfsVisit(((AigGate*)start)->_fanin[1].gate());
+      dfsVisit(start->_fanin[0].gate());
+      dfsVisit(start->_fanin[1].gate());
    }
    ++(start->_ref);
    _dfsList.push_back(start);
@@ -380,13 +394,11 @@ CirMgr::printSummary() const
 void
 CirMgr::printNetlist() const
 {
-/*
    cout << endl;
    for (unsigned i = 0, n = _dfsList.size(); i < n; ++i) {
       cout << "[" << i << "] ";
       _dfsList[i]->printGate();
    }
-*/
 }
 
 void

@@ -41,6 +41,8 @@ public:
    // Member functions about circuit construction
    bool readCircuit(const string&);
    void connect();
+   void connectPo(int idx);
+   void connectAig(int idx);
    bool genDFSList();
    CirGate* dfsVisit(CirGate* start);
 
