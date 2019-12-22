@@ -283,6 +283,8 @@ CirMgr::connect()
          _unused.push_back(_aigList[i]);
       }
    }
+   ::sort(_floatFanIns.begin(), _floatFanIns.end());
+   ::sort(_unused.begin(), _unused.end());
 }
 
 void
@@ -405,6 +407,9 @@ void
 CirMgr::printPIs() const
 {
    cout << "PIs of the circuit:";
+   for (int i=0; i<_miloa[1]; ++i) {
+      cout << " " << _piList[i];
+   }
    cout << endl;
 }
 
@@ -412,12 +417,30 @@ void
 CirMgr::printPOs() const
 {
    cout << "POs of the circuit:";
+   for (int i=0; i<_miloa[3]; ++i) {
+      cout << " " << _poList[i];
+   }
    cout << endl;
 }
 
 void
 CirMgr::printFloatGates() const
 {
+   if (!_floatFanIns.empty()) {
+      cout << "Gates with floating fanin(s):";
+      for (size_t i=0; i<_floatFanIns.size(); ++i) {
+         cout << " " << _floatFanIns[i];
+      }
+   }
+   if (!_unused.empty()) {
+      cout << "Gates defined but not used  :";
+      for (size_t i=0; i<_unused.size(); ++i) {
+         cout << " " << _unused[i];
+      }
+   }
+   if (!(_floatFanIns.empty() && _unused.empty())) {
+      cout << endl;
+   }
 }
 
 void
