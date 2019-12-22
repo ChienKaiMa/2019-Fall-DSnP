@@ -198,7 +198,7 @@ CirMgr::readCircuit(const string& fileName)
       ifs >> literal[0];
       // TODO
       CirGate* po = new PoGate(_miloa[0]+1 + i, lineNo+1);
-      po->_fanin.push_back(AigGateV((CirGate*)(literal[0]), (size_t)0));
+      ((PoGate*)po)->_fanin = AigGateV((CirGate*)(literal[0]), (size_t)0);
       _gateList[_miloa[0]+1 + i] = po;
       _poList.push_back(_miloa[0]+1 + i);
       ++lineNo;
@@ -210,8 +210,8 @@ CirMgr::readCircuit(const string& fileName)
       // TODO
       literal[0] /= 2;
       CirGate* aig = new AigGate(literal[0], lineNo+1);
-      aig->_fanin.push_back(AigGateV((CirGate*)(literal[1]), (size_t)0));
-      aig->_fanin.push_back(AigGateV((CirGate*)(literal[2]), (size_t)0));
+      ((AigGate*)aig)->_fanin1 = AigGateV((CirGate*)(literal[1]), (size_t)0);
+      ((AigGate*)aig)->_fanin2 = AigGateV((CirGate*)(literal[2]), (size_t)0);
       _gateList[literal[0]] = aig;
       _aigList.push_back(literal[0]);
       ++lineNo;
@@ -273,13 +273,13 @@ CirMgr::connect()
    // Check for unused gates
    for (int i=0; i<_miloa[1]; ++i) {
       CirGate* myPi = getGate(_piList[i]);
-      if (myPi->_fanout.empty()) {
+      if (((PiGate*)myPi)->_fanout.empty()) {
          _unused.push_back(_piList[i]);
       }
    }
    for (int i=0; i<_miloa[4]; ++i) {
       CirGate* myAig = getGate(_aigList[i]);
-      if (myAig->_fanout.empty()) {
+      if (((AigGate*)myAig)->_fanout.empty()) {
          _unused.push_back(_aigList[i]);
       }
    }
@@ -291,20 +291,29 @@ void
 CirMgr::connectPo(int idx)
 {
    CirGate* myPo = getGate(_poList[idx]);
-   size_t poFaninId = (size_t)(myPo->_fanin[0].gate());
+   size_t poFaninId = (size_t)(((PoGate*)myPo)->_fanin.gate());
    poFaninId /= 2;
    CirGate* faninGate = getGate(poFaninId);
    if (faninGate == 0) {
       CirGate* undef = new UndefGate(poFaninId);
       faninGate = undef;
       _gateList[poFaninId] = faninGate;
-      myPo->_fanin[0] = AigGateV(faninGate, 0);
+      ((PoGate*)myPo)->_fanin = AigGateV(faninGate, 0);
       _floatFanIns.push_back(_poList[idx]);
    } else {
-      bool isInv = myPo->_fanin[0].isInv();
-      myPo->_fanin[0] = AigGateV(faninGate, isInv);
+      bool isInv = ((PoGate*)myPo)->_fanin.isInv();
+      ((PoGate*)myPo)->_fanin = AigGateV(faninGate, isInv);
    }
-   faninGate->_fanout.push_back(myPo);
+   string fInType = faninGate->getTypeStr();
+   if (fInType == "UNDEF") {
+      ((UndefGate*)faninGate)->_fanout.push_back(myPo);
+   } else if (fInType == "PI") {
+      ((PiGate*)faninGate)->_fanout.push_back(myPo);      
+   } else if (fInType == "AIG") {
+      ((AigGate*)faninGate)->_fanout.push_back(myPo);
+   } else if (fInType == "CONST") {
+      ((ConstGate*)faninGate)->_fanout.push_back(myPo);
+   }   
 }
 
 void
@@ -315,7 +324,13 @@ CirMgr::connectAig(int idx)
    CirGate* faninGate;
    bool isFloat = false;
    for (int j=0; j<2; ++j) {
-      aigFaninId = (size_t)(myAig->_fanin[j].gate());
+      AigGateV aigFIn;
+      if (j == 0) {
+         aigFIn = ((AigGate*)myAig)->_fanin1;
+      } else {
+         aigFIn = ((AigGate*)myAig)->_fanin2;
+      }
+      aigFaninId = (size_t)(aigFIn.gate());
       aigFaninId /= 2;
       faninGate = getGate(aigFaninId);
       if (faninGate == 0) {
@@ -328,10 +343,23 @@ CirMgr::connectAig(int idx)
             isFloat = true;
          }
       } else {
-         bool isInv = myAig->_fanin[j].isInv();
-         myAig->_fanin[j] = AigGateV(faninGate, isInv);
+         bool isInv = aigFIn.isInv();
+         if (j == 0) {
+            ((AigGate*)myAig)->_fanin1 = AigGateV(faninGate, isInv);
+         } else {
+            ((AigGate*)myAig)->_fanin2 = AigGateV(faninGate, isInv);
+         }
       }
-      faninGate->_fanout.push_back(myAig);
+      string fInType = faninGate->getTypeStr();
+      if (fInType == "UNDEF") {
+         ((UndefGate*)faninGate)->_fanout.push_back(myAig);
+      } else if (fInType == "PI") {
+         ((PiGate*)faninGate)->_fanout.push_back(myAig);      
+      } else if (fInType == "AIG") {
+         ((AigGate*)faninGate)->_fanout.push_back(myAig);
+      } else if (fInType == "CONST") {
+         ((ConstGate*)faninGate)->_fanout.push_back(myAig);
+      }
    }
 }
 
@@ -358,10 +386,10 @@ CirMgr::dfsVisit(CirGate* start)
    if (start->getTypeStr() == "UNDEF") {
       return 0;
    } else if (start->getTypeStr() == "PO") {
-      dfsVisit(start->_fanin[0].gate());
+      dfsVisit(((PoGate*)start)->_fanin.gate());
    } else if (start->getTypeStr() == "AIG") {
-      dfsVisit(start->_fanin[0].gate());
-      dfsVisit(start->_fanin[1].gate());
+      dfsVisit(((AigGate*)start)->_fanin1.gate());
+      dfsVisit(((AigGate*)start)->_fanin2.gate());
    }
    ++(start->_ref);
    _dfsList.push_back(start);
@@ -451,6 +479,47 @@ CirMgr::printFECPairs() const
 void
 CirMgr::writeAag(ostream& outfile) const
 {
+   // TODO
+   // Don't write out floating gates!
+   
+   // writeHeader
+   // Check _miloa[4] because the other 4 should be the same?
+   outfile << "aag " << _miloa[0] << " " << _miloa[1] << " "
+   << _miloa[2] << " " << _miloa[3] << " " << _miloa[4] << endl;
+   
+   // writeIO
+   for (int i=0; i<_miloa[1]; ++i) {
+      outfile << _piList[i] * 2 << endl;
+   }
+   for (int i=0; i<_miloa[3]; ++i) {
+      AigGateV myfanin = ((PoGate*)getGate(_poList[i]))->_fanin;
+      outfile << (myfanin.gate()->getGateId()) * 2 + myfanin.isInv() << endl;
+   }
+   // writeAig
+   // Check _miloa[4] because the other 4 should be the same?
+   for (int i=0; i<_miloa[4]; ++i) {
+      AigGateV myfanin1 = ((AigGate*)getGate(_aigList[i]))->_fanin1;
+      AigGateV myfanin2 = ((AigGate*)getGate(_aigList[i]))->_fanin2;
+      outfile << _aigList[i] * 2 << " ";
+      outfile << (myfanin1.gate()->getGateId()) * 2 + myfanin1.isInv() << " ";
+      outfile << (myfanin2.gate()->getGateId()) * 2 + myfanin2.isInv() << endl;
+   }
+   // writeSymbol
+   for (int i=0; i<_miloa[1]; ++i) {
+      string sym = getGate(_piList[i])->_mySymbol;
+      if (sym != "") {
+         outfile << "i" << i << " " << sym << endl;
+      }
+   }
+   for (int i=0; i<_miloa[3]; ++i) {
+      string sym = getGate(_poList[i])->_mySymbol;
+      if (sym != "") {
+         outfile << "o" << i << " " << sym << endl;
+      }
+   }
+   // writeComment
+   outfile << "c" << endl;
+   outfile << "Koova Kevy" << endl;
 }
 
 void

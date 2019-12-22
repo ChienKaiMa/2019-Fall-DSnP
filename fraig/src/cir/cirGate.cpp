@@ -58,12 +58,12 @@ void
 AigGate::printGate() const
 {
    cout << "AIG " << _gateId << " ";
-   if (_fanin[0].gate()->isUndef()) { cout << "*"; }
-   if (_fanin[0].isInv()) { cout << "!"; }
-   cout << (_fanin[0].gate())->getGateId() << " ";
-   if (_fanin[1].gate()->isUndef()) { cout << "*"; }
-   if (_fanin[1].isInv()) { cout << "!"; }
-   cout << (_fanin[1].gate())->getGateId();
+   if (_fanin1.gate()->isUndef()) { cout << "*"; }
+   if (_fanin1.isInv()) { cout << "!"; }
+   cout << (_fanin1.gate())->getGateId() << " ";
+   if (_fanin2.gate()->isUndef()) { cout << "*"; }
+   if (_fanin2.isInv()) { cout << "!"; }
+   cout << (_fanin2.gate())->getGateId();
    if (_mySymbol.empty()) {
      cout << endl;
    } else {

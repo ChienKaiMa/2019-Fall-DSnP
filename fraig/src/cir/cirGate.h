@@ -82,8 +82,8 @@ protected:
   string _mySymbol;
 
   // Connected gates
-  vector<AigGateV> _fanin;
-  GateList _fanout;
+  // vector<AigGateV> _fanin;
+  // GateList _fanout;
 
   // DFS
   size_t        _ref;
@@ -92,6 +92,29 @@ protected:
   static vector<GateList>*  FECgroups; // Not sure
   vector<size_t>            SIMValues; // Not sure
 
+};
+
+class AigGateV
+{
+public:
+  #define NEG 0x1
+
+  AigGateV() {}
+  AigGateV(CirGate* g, size_t phase) :
+    _gateV(size_t(g) + phase) { }
+  ~AigGateV() {}
+  
+  AigGate* gate() const {
+    return (AigGate*)(_gateV & ~size_t(NEG));
+  }
+
+  // Basic access methods
+  bool isInv() const {
+    return (_gateV & NEG);
+  }
+
+protected:
+  size_t _gateV;
 };
 
 class AigGate : public CirGate
@@ -118,30 +141,12 @@ public:
 
   // Printing functions
   void printGate() const override;
+
+  AigGateV _fanin1;
+  AigGateV _fanin2;
+  GateList _fanout;
 };
 
-class AigGateV
-{
-public:
-  #define NEG 0x1
-
-  AigGateV() {}
-  AigGateV(CirGate* g, size_t phase) :
-    _gateV(size_t(g) + phase) { }
-  ~AigGateV() {}
-  
-  AigGate* gate() const {
-    return (AigGate*)(_gateV & ~size_t(NEG));
-  }
-
-  // Basic access methods
-  bool isInv() const {
-    return (_gateV & NEG);
-  }
-
-protected:
-  size_t _gateV;
-};
 
 class UndefGate : public CirGate
 {
@@ -169,6 +174,8 @@ public:
   void printGate() const override {
     return;
   }
+
+  GateList _fanout;
 };
 
 class PiGate : public CirGate
@@ -202,6 +209,8 @@ public:
       cout << " (" << _mySymbol << ")" << endl;
     }
   }
+
+  GateList _fanout;
 };
 
 class PoGate : public CirGate
@@ -229,17 +238,19 @@ public:
   // Printing functions
   void printGate() const override {
     cout << "PO  " << _gateId << " ";
-    if (_fanin[0].gate()->isUndef()) { cout << "*"; }
-    if (_fanin[0].isInv()) {
+    if (_fanin.gate()->isUndef()) { cout << "*"; }
+    if (_fanin.isInv()) {
       cout << "!";
     }
-    cout << (_fanin[0].gate())->getGateId();
+    cout << (_fanin.gate())->getGateId();
     if (_mySymbol.empty()) {
       cout << endl;
     } else {
       cout << " (" << _mySymbol << ")" << endl;
     }
   }
+
+  AigGateV _fanin;
 };
 
 class ConstGate : public CirGate
@@ -267,6 +278,8 @@ public:
   void printGate() const override {
     cout << "CONST0" << endl;
   }
+
+  GateList _fanout;
 };
 
 #endif // CIR_GATE_H
