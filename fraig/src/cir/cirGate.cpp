@@ -14,6 +14,7 @@
 #include "cirGate.h"
 #include "cirMgr.h"
 #include "util.h"
+#include <algorithm>
 
 using namespace std;
 
@@ -22,6 +23,7 @@ using namespace std;
 //       your own variables and functions.
 
 extern CirMgr *cirMgr;
+static vector<int> walkList;
 
 /**************************************/
 /*   class CirGate member functions   */
@@ -46,28 +48,107 @@ void
 CirGate::reportFanin(int level) const
 {
    assert (level >= 0);
+   string myBlank = "";
+   walkList.clear();
+   printFanin(level, myBlank);
 }
 
 void
 CirGate::reportFanout(int level) const
 {
    assert (level >= 0);
+   string myBlank = "";
+   walkList.clear();
+   printFanout(level, myBlank);
 }
 
+
 void
-AigGate::printGate() const
+CirGate::printFanin(int level, string myBlank) const
 {
-   cout << "AIG " << _gateId << " ";
-   if (_fanin1.gate()->isUndef()) { cout << "*"; }
-   if (_fanin1.isInv()) { cout << "!"; }
-   cout << (_fanin1.gate())->getGateId() << " ";
-   if (_fanin2.gate()->isUndef()) { cout << "*"; }
-   if (_fanin2.isInv()) { cout << "!"; }
-   cout << (_fanin2.gate())->getGateId();
-   if (_mySymbol.empty()) {
-     cout << endl;
-   } else {
-     cout << " (" << _mySymbol << ")" << endl;
+   // print this gate
+   cout << getTypeStr() << " " << _gateId;
+   // check if go before
+   if (isAig()) {
+      if (find(walkList.begin(), walkList.end(), _gateId) != walkList.end()) {
+         cout << " (*)" << endl;
+         return;
+      } else {
+         walkList.push_back(_gateId);
+      }
+   }
+   cout << endl;
+   // finish printing
+   // print its fanins
+   if (level != 0) {
+      myBlank += "  ";
+      if (getTypeStr() == "PO") {
+         cout << myBlank;
+         if (((PoGate*)this)->_fanin.isInv()) {
+            cout << "!";
+         }
+         ((PoGate*)this)->_fanin.gate()->printFanin(level-1, myBlank);
+      } else if (getTypeStr() == "AIG") {
+         cout << myBlank;
+         if (((AigGate*)this)->_fanin1.isInv()) {
+            cout << "!";
+         }
+         ((AigGate*)this)->_fanin1.gate()->printFanin(level-1, myBlank);
+         cout << myBlank;
+         if (((AigGate*)this)->_fanin2.isInv()) {
+            cout << "!";
+         }
+         ((AigGate*)this)->_fanin2.gate()->printFanin(level-1, myBlank);
+      }
    }
 }
 
+void
+CirGate::printFanout(int level, string myBlank) const
+{
+   assert(level >= 0);
+   cout << getTypeStr() << " " << _gateId;
+   if (isAig()) {
+      if (find(walkList.begin(), walkList.end(), _gateId) != walkList.end()) {
+         cout << " (*)" << endl;
+         return;
+      } else {
+         if (level != 0) {
+            walkList.push_back(_gateId);
+         }
+      }
+   }
+   cout << endl;
+   
+   if (level != 0) {
+      myBlank += "  ";
+      if (isAig()) {
+         vector<AigGateV>& myFanout = ((AigGate*)this)->_fanout;
+         for (size_t i=0; i<myFanout.size(); ++i) {
+            cout << myBlank;
+            if (myFanout[i].isInv()) {
+               cout << "!";
+            }
+            (myFanout[i].gate())->printFanout(level-1, myBlank);
+         }
+      } else if (getTypeStr() == "PI") {
+         vector<AigGateV>& myFanout = ((PiGate*)this)->_fanout;
+         for (size_t i=0; i<myFanout.size(); ++i) {
+            cout << myBlank;
+            if (myFanout[i].isInv()) {
+               cout << "!";
+            }
+            (myFanout[i].gate())->printFanout(level-1, myBlank);
+         }
+      } else if (getTypeStr() == "CONST") {
+         vector<AigGateV>& myFanout = ((ConstGate*)this)->_fanout;
+         for (size_t i=0; i<myFanout.size(); ++i) {
+            cout << myBlank;
+            if (myFanout[i].isInv()) {
+               cout << "!";
+            }
+            (myFanout[i].gate())->printFanout(level-1, myBlank);
+         }
+      }
+   }
+}

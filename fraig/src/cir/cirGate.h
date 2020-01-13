@@ -72,6 +72,14 @@ public:
   void reportGate() const;
   void reportFanin(int level) const;
   void reportFanout(int level) const;
+  void printFanin(int level, string myBlank) const;
+  void printFanout(int level, string myBlank) const;
+
+  // Opt
+  virtual void sweep(IdList&) = 0;
+  virtual void deleteFanout(AigGateV) = 0;
+  virtual bool isFanoEmpty() = 0;
+  virtual void replaceGate(AigGateV) = 0;
    
 private:
 protected:
@@ -113,6 +121,14 @@ public:
     return (_gateV & NEG);
   }
 
+  AigGateV operator ! () {
+    return AigGateV(((CirGate*)this->gate()), !(this->isInv()));
+  }
+
+  bool operator == (AigGateV a) {
+    return (this->_gateV == a._gateV);
+  }
+
 protected:
   size_t _gateV;
 };
@@ -140,11 +156,65 @@ public:
   }
 
   // Printing functions
-  void printGate() const override;
+  void printGate() const override
+  {
+    cout << "AIG " << _gateId << " ";
+    if (_fanin1.gate()->isUndef()) { cout << "*"; }
+    if (_fanin1.isInv()) { cout << "!"; }
+    cout << (_fanin1.gate())->getGateId() << " ";
+    if (_fanin2.gate()->isUndef()) { cout << "*"; }
+    if (_fanin2.isInv()) { cout << "!"; }
+    cout << (_fanin2.gate())->getGateId();
+    if (_mySymbol.empty()) {
+      cout << endl;
+    } else {
+      cout << " (" << _mySymbol << ")" << endl;
+    }
+  }
+
+  void sweep(IdList& toSweep) override {
+    toSweep.push_back(_gateId);
+    // 1. store its fanins
+    CirGate* f1 = _fanin1.gate();
+    CirGate* f2 = _fanin2.gate();
+    // 2. Remove this gate from its fanins' fanouts
+    f1->deleteFanout(AigGateV((CirGate*)this, _fanin1.isInv()));
+    if (f1->isFanoEmpty()) {
+      if (f1->isAig() || f1->isUndef()) {
+        f1->sweep(toSweep);
+      } else if (f1->getTypeStr() == "PI") {
+        toSweep.push_back(f1->getGateId());
+      }
+    }
+    f2->deleteFanout(AigGateV((CirGate*)this, _fanin2.isInv()));
+    if (f2->isFanoEmpty()) {
+      if (f2->isAig() || f2->isUndef()) {
+        f2->sweep(toSweep);
+      } else if (f2->getTypeStr() == "PI") {
+        toSweep.push_back(f2->getGateId());
+      }
+    }
+  }
+
+  void deleteFanout(AigGateV g) override {
+    for (size_t i=0; i<_fanout.size(); ++i) {
+      if (g.gate() == _fanout[i].gate()) {
+        _fanout[i] = _fanout[_fanout.size()-1];
+        _fanout.pop_back();
+      }
+    }
+  }
+
+  bool isFanoEmpty() override {
+    return _fanout.empty();
+  }
+
+  void optimize(IdList&);
+  void replaceGate(AigGateV repl) override;
 
   AigGateV _fanin1;
   AigGateV _fanin2;
-  GateList _fanout;
+  vector<AigGateV> _fanout;
 };
 
 
@@ -175,7 +245,26 @@ public:
     return;
   }
 
-  GateList _fanout;
+  void sweep(IdList& toSweep) override {
+    toSweep.push_back(_gateId);
+  }
+
+  void deleteFanout(AigGateV g) override {
+    for (size_t i=0; i<_fanout.size(); ++i) {
+      if (g.gate() == _fanout[i].gate()) {
+        _fanout[i] = _fanout[_fanout.size()-1];
+        _fanout.pop_back();
+      }
+    }
+  }
+
+  bool isFanoEmpty() override {
+    return _fanout.empty();
+  }
+
+  void replaceGate(AigGateV) override;
+
+  vector<AigGateV> _fanout;
 };
 
 class PiGate : public CirGate
@@ -210,7 +299,26 @@ public:
     }
   }
 
-  GateList _fanout;
+  void sweep(IdList& toSweep) override {
+    // Do nothing
+  }
+
+  void deleteFanout(AigGateV g) override {
+    for (size_t i=0; i<_fanout.size(); ++i) {
+      if (g.gate() == _fanout[i].gate()) {
+        _fanout[i] = _fanout[_fanout.size()-1];
+        _fanout.pop_back();
+      }
+    }
+  }
+
+  void replaceGate(AigGateV) override;
+
+  bool isFanoEmpty() override {
+    return _fanout.empty();
+  }
+
+  vector<AigGateV> _fanout;
 };
 
 class PoGate : public CirGate
@@ -250,6 +358,22 @@ public:
     }
   }
 
+  void sweep(IdList& toSweep) override {
+    // Do nothing
+  }
+
+  void deleteFanout(AigGateV g) override {
+    // Do nothing
+  }
+
+  bool isFanoEmpty() override {
+    return true;
+  }
+
+  void replaceGate(AigGateV) override {
+
+  }
+
   AigGateV _fanin;
 };
 
@@ -279,7 +403,26 @@ public:
     cout << "CONST0" << endl;
   }
 
-  GateList _fanout;
+  void sweep(IdList& toSweep) override {
+    // Do nothing
+  }
+
+  void deleteFanout(AigGateV g) override {
+    for (size_t i=0; i<_fanout.size(); ++i) {
+      if (g.gate() == _fanout[i].gate()) {
+        _fanout[i] = _fanout[_fanout.size()-1];
+        _fanout.pop_back();
+      }
+    }
+  }
+
+  bool isFanoEmpty() override {
+    return _fanout.empty();
+  }
+
+  void replaceGate(AigGateV) override;
+
+  vector<AigGateV> _fanout;
 };
 
 #endif // CIR_GATE_H

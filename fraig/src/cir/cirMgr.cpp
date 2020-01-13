@@ -288,7 +288,7 @@ CirMgr::connect()
 }
 
 void
-CirMgr::connectPo(int idx)
+CirMgr::connectPo(const int& idx)
 {
    CirGate* myPo = getGate(_poList[idx]);
    size_t poFaninId = (size_t)(((PoGate*)myPo)->_fanin.gate());
@@ -298,26 +298,25 @@ CirMgr::connectPo(int idx)
       CirGate* undef = new UndefGate(poFaninId);
       faninGate = undef;
       _gateList[poFaninId] = faninGate;
-      ((PoGate*)myPo)->_fanin = AigGateV(faninGate, 0);
       _floatFanIns.push_back(_poList[idx]);
-   } else {
-      bool isInv = ((PoGate*)myPo)->_fanin.isInv();
-      ((PoGate*)myPo)->_fanin = AigGateV(faninGate, isInv);
    }
+   bool isInv = ((PoGate*)myPo)->_fanin.isInv();
+   ((PoGate*)myPo)->_fanin = AigGateV(faninGate, isInv);
+
    string fInType = faninGate->getTypeStr();
    if (fInType == "UNDEF") {
-      ((UndefGate*)faninGate)->_fanout.push_back(myPo);
+      ((UndefGate*)faninGate)->_fanout.push_back(AigGateV(myPo, isInv));
    } else if (fInType == "PI") {
-      ((PiGate*)faninGate)->_fanout.push_back(myPo);      
+      ((PiGate*)faninGate)->_fanout.push_back(AigGateV(myPo, isInv));      
    } else if (fInType == "AIG") {
-      ((AigGate*)faninGate)->_fanout.push_back(myPo);
+      ((AigGate*)faninGate)->_fanout.push_back(AigGateV(myPo, isInv));
    } else if (fInType == "CONST") {
-      ((ConstGate*)faninGate)->_fanout.push_back(myPo);
+      ((ConstGate*)faninGate)->_fanout.push_back(AigGateV(myPo, isInv));
    }   
 }
 
 void
-CirMgr::connectAig(int idx)
+CirMgr::connectAig(const int& idx)
 {
    CirGate* myAig = getGate(_aigList[idx]);
    size_t aigFaninId;
@@ -342,6 +341,11 @@ CirMgr::connectAig(int idx)
             _floatFanIns.push_back(_aigList[idx]);
             isFloat = true;
          }
+         if (j == 0) {
+            ((AigGate*)myAig)->_fanin1 = AigGateV(faninGate, 0);
+         } else {
+            ((AigGate*)myAig)->_fanin2 = AigGateV(faninGate, 0);
+         }
       } else {
          bool isInv = aigFIn.isInv();
          if (j == 0) {
@@ -350,32 +354,32 @@ CirMgr::connectAig(int idx)
             ((AigGate*)myAig)->_fanin2 = AigGateV(faninGate, isInv);
          }
       }
+      bool isInv = aigFIn.isInv();
       string fInType = faninGate->getTypeStr();
       if (fInType == "UNDEF") {
-         ((UndefGate*)faninGate)->_fanout.push_back(myAig);
+         ((UndefGate*)faninGate)->_fanout.push_back(AigGateV(myAig, isInv));
       } else if (fInType == "PI") {
-         ((PiGate*)faninGate)->_fanout.push_back(myAig);      
+         ((PiGate*)faninGate)->_fanout.push_back(AigGateV(myAig, isInv));      
       } else if (fInType == "AIG") {
-         ((AigGate*)faninGate)->_fanout.push_back(myAig);
+         ((AigGate*)faninGate)->_fanout.push_back(AigGateV(myAig, isInv));
       } else if (fInType == "CONST") {
-         ((ConstGate*)faninGate)->_fanout.push_back(myAig);
+         ((ConstGate*)faninGate)->_fanout.push_back(AigGateV(myAig, isInv));
       }
    }
 }
 
-bool
+void
 CirMgr::genDFSList()
 {
    ++(_globalRef);
    for (int i=0; i<_miloa[3]; ++i)
    {
-      dfsVisit(getGate(_poList[i]));
+      dfsVisit(getGate(_poList[i]), true);
    }
-   return true;
 }
 
 CirGate*
-CirMgr::dfsVisit(CirGate* start)
+CirMgr::dfsVisit(CirGate* start, bool toList)
 {
    if (start == 0) {
       return 0;
@@ -386,13 +390,17 @@ CirMgr::dfsVisit(CirGate* start)
    if (start->getTypeStr() == "UNDEF") {
       return 0;
    } else if (start->getTypeStr() == "PO") {
-      dfsVisit(((PoGate*)start)->_fanin.gate());
+      dfsVisit(((PoGate*)start)->_fanin.gate(), toList);
    } else if (start->getTypeStr() == "AIG") {
-      dfsVisit(((AigGate*)start)->_fanin1.gate());
-      dfsVisit(((AigGate*)start)->_fanin2.gate());
+      dfsVisit(((AigGate*)start)->_fanin1.gate(), toList);
+      dfsVisit(((AigGate*)start)->_fanin2.gate(), toList);
    }
    ++(start->_ref);
-   _dfsList.push_back(start);
+   if (toList) {
+      _dfsList.push_back(start);
+   } else {
+      // Opt?
+   }
    return start;
 }
 
@@ -416,9 +424,9 @@ CirMgr::printSummary() const
    cout << "==================" << endl;
    cout << "  PI" << setw(12) << _miloa[1] << endl;
    cout << "  PO" << setw(12) << _miloa[3] << endl;
-   cout << "  AIG" << setw(11) << _miloa[4] << endl;
+   cout << "  AIG" << setw(11) << _aigList.size() << endl;
    cout << "------------------" << endl;
-   cout << "  Total" << setw(9) << _miloa[1] + _miloa[3] + _miloa[4] << endl;
+   cout << "  Total" << setw(9) << _miloa[1] + _miloa[3] + _aigList.size() << endl;
 }
 
 void
@@ -459,14 +467,13 @@ CirMgr::printFloatGates() const
       for (size_t i=0; i<_floatFanIns.size(); ++i) {
          cout << " " << _floatFanIns[i];
       }
+      cout << endl;
    }
    if (!_unused.empty()) {
       cout << "Gates defined but not used  :";
       for (size_t i=0; i<_unused.size(); ++i) {
          cout << " " << _unused[i];
       }
-   }
-   if (!(_floatFanIns.empty() && _unused.empty())) {
       cout << endl;
    }
 }
@@ -482,10 +489,16 @@ CirMgr::writeAag(ostream& outfile) const
    // TODO
    // Don't write out floating gates!
    
+   int aig = 0;
+   for (size_t i=0; i<_dfsList.size(); ++i) {
+      if (_dfsList[i]->isAig()) {
+         ++aig;
+      }
+   }
+
    // writeHeader
-   // Check _miloa[4] because the other 4 should be the same?
    outfile << "aag " << _miloa[0] << " " << _miloa[1] << " "
-   << _miloa[2] << " " << _miloa[3] << " " << _miloa[4] << endl;
+   << _miloa[2] << " " << _miloa[3] << " " << aig << endl;
    
    // writeIO
    for (int i=0; i<_miloa[1]; ++i) {
@@ -497,12 +510,14 @@ CirMgr::writeAag(ostream& outfile) const
    }
    // writeAig
    // Check _miloa[4] because the other 4 should be the same?
-   for (int i=0; i<_miloa[4]; ++i) {
-      AigGateV myfanin1 = ((AigGate*)getGate(_aigList[i]))->_fanin1;
-      AigGateV myfanin2 = ((AigGate*)getGate(_aigList[i]))->_fanin2;
-      outfile << _aigList[i] * 2 << " ";
-      outfile << (myfanin1.gate()->getGateId()) * 2 + myfanin1.isInv() << " ";
-      outfile << (myfanin2.gate()->getGateId()) * 2 + myfanin2.isInv() << endl;
+   for (size_t i=0; i<_dfsList.size(); ++i) {
+      if (_dfsList[i]->isAig()) {
+         AigGateV myfanin1 = ((AigGate*)_dfsList[i])->_fanin1;
+         AigGateV myfanin2 = ((AigGate*)_dfsList[i])->_fanin2;
+         outfile << (_dfsList[i]->_gateId) * 2 << " ";
+         outfile << (myfanin1.gate()->getGateId()) * 2 + myfanin1.isInv() << " ";
+         outfile << (myfanin2.gate()->getGateId()) * 2 + myfanin2.isInv() << endl;
+      }
    }
    // writeSymbol
    for (int i=0; i<_miloa[1]; ++i) {

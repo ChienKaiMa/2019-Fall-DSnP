@@ -26,7 +26,8 @@ class CirMgr
 {
 public:
    CirMgr() {}
-   ~CirMgr() {} 
+   ~CirMgr() { // TODO: reset();
+   } 
 
    // Access functions
    // return '0' if "gid" corresponds to an undefined gate.
@@ -41,10 +42,10 @@ public:
    // Member functions about circuit construction
    bool readCircuit(const string&);
    void connect();
-   void connectPo(int idx);
-   void connectAig(int idx);
-   bool genDFSList();
-   CirGate* dfsVisit(CirGate* start);
+   void connectPo(const int&);
+   void connectAig(const int&);
+   void genDFSList();
+   CirGate* dfsVisit(CirGate*, bool);
 
    // Member functions about circuit optimization
    void sweep();
@@ -75,9 +76,9 @@ private:
    int                _miloa[5];
    // GateLists
    GateList   _gateList;
-   vector<size_t>     _piList; // or CirGate* ?
-   vector<size_t>     _poList; // or CirGate* ?
-   vector<size_t>     _aigList; // or CirGate* ?
+   vector<size_t>     _piList;
+   vector<size_t>     _poList;
+   vector<size_t>     _aigList;
    GateList           _dfsList;
    // FloatingLists
    // (b) A gate that cannot be reached from PI
@@ -86,14 +87,24 @@ private:
    // (c) A gate that cannot be reached from any PI and PO
    // (d) A gate with a floating fanin
    // Contains AIGs and POs
-   IdList             _floatFanIns; // Or size_t?
+   IdList             _floatFanIns;
    
    // (a) A gate that cannot reach any PO
    // Gates defined but not used
    // Contains PIs and AIGs
-   IdList             _unused; // Or size_t?
+   IdList             _unused;
    //
    ofstream           *_simLog;
+
+   void deleteGate(CirGate*);
+   void reset() {
+      for (int i=0; i<_miloa[0]+_miloa[3]+1; ++i) {
+         if (_gateList[i]) {
+            delete _gateList[i];
+            _gateList[i] = 0;
+         }
+      }
+   }
 };
 
 #endif // CIR_MGR_H
