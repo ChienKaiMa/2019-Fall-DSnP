@@ -200,7 +200,11 @@ AigGate::optimize(IdList& toMerge) {
     toMerge.push_back(_gateId);
   } else if (_fanin1 == _fanin2){
     // Identical fanins -> replaced with the (fanin + phase)
-    cout << "Simplifying: " << _fanin1.gate()->_gateId << " merging " << _gateId << "..." << endl;
+    cout << "Simplifying: " << _fanin1.gate()->_gateId << " merging ";
+    if (_fanin1.isInv()) {
+      cout << "!";
+    }
+    cout << _gateId << "..." << endl;
     _fanin1.gate()->deleteFanout(AigGateV((CirGate*)this, _fanin1.isInv()));
     _fanin2.gate()->deleteFanout(AigGateV((CirGate*)this, _fanin2.isInv()));
     // TODO: Check if _fanin2 has no fanout
