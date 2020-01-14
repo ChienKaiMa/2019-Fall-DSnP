@@ -354,6 +354,13 @@ CirMgr::connectAig(const int& idx)
             ((AigGate*)myAig)->_fanin2 = AigGateV(faninGate, isInv);
          }
       }
+      // TODO: What if the gate is already UndefGate?
+      if (faninGate->isUndef()) {
+         if (!isFloat) {
+            _floatFanIns.push_back(_aigList[idx]);
+            isFloat = true;
+         }
+      }
       bool isInv = aigFIn.isInv();
       string fInType = faninGate->getTypeStr();
       if (fInType == "UNDEF") {

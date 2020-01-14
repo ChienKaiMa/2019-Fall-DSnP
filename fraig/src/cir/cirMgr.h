@@ -100,7 +100,7 @@ private:
    void reset() {
       for (int i=0; i<_miloa[0]+_miloa[3]+1; ++i) {
          if (_gateList[i]) {
-            delete _gateList[i];
+            delete (_gateList[i]);
             _gateList[i] = 0;
          }
       }
