@@ -14,6 +14,7 @@
 #include <iostream>
 #include "cirDef.h"
 #include "sat.h"
+#include <bitset>
 
 using namespace std;
 
@@ -64,6 +65,7 @@ public:
   }
   unsigned getLineNo() const { return _lineNo; }
   unsigned getGateId() const { return _gateId; }
+  size_t getSimValue() const { return SimValue; }
   virtual bool isAig() const = 0;
   virtual bool isUndef() const = 0;
 
@@ -74,6 +76,7 @@ public:
   void reportFanout(int level) const;
   void printFanin(int level, string myBlank) const;
   void printFanout(int level, string myBlank) const;
+  void getFanin(vector<CirGate*>&, vector<CirGate*>&) const;
 
   // Opt
   virtual void sweep(IdList&) = 0;
@@ -98,7 +101,15 @@ protected:
 
   // Simulation
   static vector<GateList>*  FECgroups; // Not sure
-  vector<size_t>            SIMValues; // Not sure
+  size_t            SimValue = 0; // Not sure
+  void printSimValue() const {
+    string mySimValue = (bitset<sizeof(size_t)*8> (SimValue)).to_string();
+    cout << mySimValue.substr(0, 8) << "_" << mySimValue.substr(8, 8) << "_"
+    << mySimValue.substr(16, 8) << "_" << mySimValue.substr(24, 8) << "_"
+    << mySimValue.substr(32, 8) << "_" << mySimValue.substr(40, 8) << "_"
+    << mySimValue.substr(48, 8) << "_" << mySimValue.substr(56, 8);
+  }
+  bool simulate();
 
 };
 
@@ -211,6 +222,7 @@ public:
 
   void optimize(IdList&);
   void replaceGate(AigGateV repl) override;
+  //Sim
 
   AigGateV _fanin1;
   AigGateV _fanin2;

@@ -46,6 +46,7 @@ public:
    void connectAig(const int&);
    void genDFSList();
    CirGate* dfsVisit(CirGate*, bool);
+   CirGate* dfsVisit(CirGate*, vector<CirGate*>) const;
 
    // Member functions about circuit optimization
    void sweep();
@@ -95,8 +96,13 @@ private:
    IdList             _unused;
    //
    ofstream           *_simLog;
+   vector<vector<size_t>>   _fecGroups;
 
    void deleteGate(CirGate*);
+   size_t patGen(string);
+   bool packPat(ifstream& patternFile, size_t& patNum);
+   size_t revPat(size_t, int);
+   void checkFEC();
    void reset() {
       for (int i=0; i<_miloa[0]+_miloa[3]+1; ++i) {
          if (_gateList[i]) {

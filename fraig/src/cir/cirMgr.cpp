@@ -411,6 +411,28 @@ CirMgr::dfsVisit(CirGate* start, bool toList)
    return start;
 }
 
+CirGate*
+CirMgr::dfsVisit(CirGate* start, vector<CirGate*> toList) const
+{
+   if (start == 0) {
+      return 0;
+   }
+   if (_globalRef == start->_ref) {
+      return 0;
+   }
+   if (start->getTypeStr() == "UNDEF") {
+      return 0;
+   } else if (start->getTypeStr() == "PO") {
+      dfsVisit(((PoGate*)start)->_fanin.gate(), toList);
+   } else if (start->getTypeStr() == "AIG") {
+      dfsVisit(((AigGate*)start)->_fanin1.gate(), toList);
+      dfsVisit(((AigGate*)start)->_fanin2.gate(), toList);
+   }
+   ++(start->_ref);
+   toList.push_back(start);
+   return start;
+}
+
 /**********************************************************/
 /*   class CirMgr member functions for circuit printing   */
 /**********************************************************/
@@ -547,5 +569,69 @@ CirMgr::writeAag(ostream& outfile) const
 void
 CirMgr::writeGate(ostream& outfile, CirGate *g) const
 {
+   // Find input and aig
+   vector<CirGate*> myPI;
+   vector<CirGate*> myAIG;
+   g->getFanin(myPI, myAIG);
+
+   // writeHeader
+   outfile << "aag " << g->_gateId << " " << myPI.size() << " "
+   << 0 << " " << 1 << " " << myAIG.size() << endl;
+   // WriteInput
+   for (size_t i=0; i<myPI.size(); ++i) {
+      outfile << myPI[i]->_gateId * 2 << endl;
+   }
+   // WriteOutput
+   outfile << (g->_gateId)*2 << endl;
+   
+   // writeAig
+   for (size_t i=0; i<myAIG.size(); ++i) {
+      AigGateV myfanin1 = ((AigGate*)myAIG[i])->_fanin1;
+      AigGateV myfanin2 = ((AigGate*)myAIG[i])->_fanin2;
+      outfile << (myAIG[i]->_gateId) * 2 << " ";
+      outfile << (myfanin1.gate()->getGateId()) * 2 + myfanin1.isInv() << " ";
+      outfile << (myfanin2.gate()->getGateId()) * 2 + myfanin2.isInv() << endl;
+   }
+   // writeSymbol
+   for (size_t i=0; i<myPI.size(); ++i) {
+      string sym = myPI[i]->_mySymbol;
+      if (sym != "") {
+         outfile << "i" << i << " " << sym << endl;
+      }
+   }
+   
+   // WriteAig
+   outfile << "o0 " << g->_gateId << endl;
+   outfile << "c" << endl;
+   outfile << "Write gate (" << g->_gateId << ") by Koova" << endl;
 }
 
+void
+CirGate::getFanin(vector<CirGate*>& myPI, vector<CirGate*>& myAIG) const
+{
+   if (isAig()) {
+      bool isExist = false;
+      for (size_t i=0; i<myAIG.size(); ++i) {
+         if (myAIG[i] == (CirGate*)this) {
+            isExist = true;
+         }
+      }
+      if (!isExist) {
+         myAIG.push_back((CirGate*)this);
+      }
+      ((AigGate*)this)->_fanin1.gate()->getFanin(myPI, myAIG);
+      ((AigGate*)this)->_fanin2.gate()->getFanin(myPI, myAIG);
+   } else if (_myType == PI_GATE) {
+      bool isExist = false;
+      for (size_t i=0; i<myPI.size(); ++i) {
+         if (myPI[i] == (CirGate*)this) {
+            isExist = true;
+         }
+      }
+      if (!isExist) {
+         myPI.push_back((CirGate*)this);
+      }
+   } else if (isUndef() ||_myType == CONST_GATE) {
+      // Do nothing
+   }
+}

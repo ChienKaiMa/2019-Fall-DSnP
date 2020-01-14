@@ -15,6 +15,7 @@
 #include "cirMgr.h"
 #include "util.h"
 #include <algorithm>
+#include <bitset>
 
 using namespace std;
 
@@ -40,7 +41,9 @@ CirGate::reportGate() const
        << endl;
    }
    cout << "= FECs: " << "TODO: printFECGroups" << endl;
-   cout << "= Value: " << "TODO: printSIMValues" << endl;
+   cout << "= Value: ";
+   printSimValue();
+   cout << endl;
    cout << "================================================================================" << endl;
 }
 
