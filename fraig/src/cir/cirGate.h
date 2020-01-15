@@ -77,6 +77,7 @@ public:
   void printFanin(int level, string myBlank) const;
   void printFanout(int level, string myBlank) const;
   void getFanin(vector<CirGate*>&, vector<CirGate*>&) const;
+  void printFECGroups() const;
 
   // Opt
   virtual void sweep(IdList&) = 0;

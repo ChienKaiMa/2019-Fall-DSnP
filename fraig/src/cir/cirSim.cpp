@@ -66,7 +66,6 @@ void
 CirMgr::fileSim(ifstream& patternFile)
 {
   // Packing the patterns into size_t
-  size_t myBits[_miloa[1]];
   string line;
   size_t totPatNum = 0;
   size_t patNum = 0;
@@ -84,6 +83,9 @@ CirMgr::fileSim(ifstream& patternFile)
     for (size_t i=0; i<_dfsList.size(); ++i) {
       _dfsList[i]->simulate();
     }
+    if (_simLog)  {
+      getSimLog(patNum);
+    }
     checkFEC();
   }
   if (patNum != 0) {
@@ -100,6 +102,52 @@ CirMgr::fileSim(ifstream& patternFile)
 /*************************************************/
 /*   Private member functions about Simulation   */
 /*************************************************/
+void
+CirMgr::getSimLog(size_t& patNum)
+{
+  /*
+  cout << patNum << endl;
+  for (int i=63; i>=64-int(patNum); --i) {
+    for (size_t j=0; j<_piList.size(); ++j) {
+      bitset<64> myBit (getGate(_piList[j])->SimValue);
+      *_simLog << myBit[i];
+    }
+    *_simLog << " ";
+    for (size_t j=0; j<_poList.size(); ++j) {
+      bitset<64> myBit (getGate(_poList[j])->SimValue);
+      *_simLog << myBit[i];
+    }
+    *_simLog << endl;
+  }
+  */
+  if (patNum == 64) {
+    for (int i=63; i>=0; --i) {
+      for (size_t j=0; j<_piList.size(); ++j) {
+        bitset<64> myBit (getGate(_piList[j])->SimValue);
+        *_simLog << (myBit.to_string())[i];
+      }
+      *_simLog << " ";
+      for (size_t j=0; j<_poList.size(); ++j) {
+        bitset<64> myBit (getGate(_poList[j])->SimValue);
+        *_simLog << (myBit.to_string())[i];
+      }
+      *_simLog << endl;
+    }
+  } else {
+    for (int i=63; i>=64-patNum; --i) {
+      for (size_t j=0; j<_piList.size(); ++j) {
+        bitset<64> myBit (getGate(_piList[j])->SimValue);
+        *_simLog << (myBit.to_string())[i];
+      }
+      *_simLog << " ";
+      for (size_t j=0; j<_poList.size(); ++j) {
+        bitset<64> myBit (getGate(_poList[j])->SimValue);
+        *_simLog << (myBit.to_string())[i];
+      }
+      *_simLog << endl;
+    }
+  }
+}
 
 size_t
 CirMgr::patGen(string)
@@ -212,16 +260,18 @@ CirMgr::findFECGroup(const CirGate* g) const
 void
 CirGate::printFECGroups() const
 {
-  vector<size_t> myGroup = cirMgr->findFECGroup(this);
-  for (size_t i=0; i<myGroup.size(); ++i) {
-    if (myGroup[i] != _gateId) {
-      CirGate* myGate = cirMgr->getGate(myGroup[i]);
-      size_t myVal = myGate->getSimValue();
-      cout << " ";
-      if (myVal = ~SimValue) {
-        cout << "!";
+  if (isAig() || _myType == CONST_GATE) {
+    vector<size_t> myGroup = cirMgr->findFECGroup(this);
+    for (size_t i=0; i<myGroup.size(); ++i) {
+      if (myGroup[i] != _gateId) {
+        CirGate* myGate = cirMgr->getGate(myGroup[i]);
+        size_t myVal = myGate->getSimValue();
+        cout << " ";
+        if (myVal == ~SimValue) {
+          cout << "!";
+        }
+        cout << myGroup[i];
       }
-      cout << myGroup[i];
     }
   }
 }
