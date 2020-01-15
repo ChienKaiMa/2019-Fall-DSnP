@@ -196,6 +196,19 @@ CirMgr::packPat(ifstream& patternFile, size_t& patNum)
     ++patNum;
     // TODO: Check if there's something fishy in the line
     for (int i=0; i<_miloa[1]; ++i) {
+      if (line.length() != _miloa[1]) {
+        cerr << "Pattern(" << line << ") length(" << line.length()
+        << ") does not match the number of inputs(" << _miloa[1]
+        << ") in a circuit!!" << endl;
+        patNum = 0;
+        return true;
+      }
+      if (line[i] != '0' && line[i] != '1') {
+        cerr << "Error: Pattern(" << line << ") contains a non-0/1"
+        << " character('" << line[i] << "')." << endl;
+        patNum = 0;
+        return true;
+      }
       myBits[i] = (myBits[i] << 1) + (line[i] - '0');
     }
     if (patNum >= 64) {
