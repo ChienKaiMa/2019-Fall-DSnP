@@ -56,7 +56,7 @@ public:
    void randomSim();
    void fileSim(ifstream&);
    void setSimLog(ofstream *logFile) { _simLog = logFile; }
-   void getSimLog(size_t&);
+   void getSimLog(const size_t);
 
    // Member functions about fraig
    void strash();

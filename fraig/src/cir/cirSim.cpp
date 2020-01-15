@@ -16,6 +16,7 @@
 #include "util.h"
 #include <bitset>
 #include <unordered_set>
+#include <cmath>
 
 using namespace std;
 
@@ -60,6 +61,24 @@ struct SortKey {
 void
 CirMgr::randomSim()
 {
+  int simCount = sqrt(_miloa[1] + _miloa[3] + _miloa[4]) * 4;
+  for (int i=0; i<simCount; ++i) {
+    // Random
+    for (int i=0; i<_miloa[1]; ++i) {
+      getGate(_piList[i])->SimValue = rnGen(INT_MAX);
+    }
+    for (size_t i=0; i<_dfsList.size(); ++i) {
+      _dfsList[i]->simulate();
+    }
+    if (_simLog)  {
+      getSimLog(32);
+    }
+    checkFEC();
+  }
+  if (!_fecGroups.empty()) {
+    cout << "Total #FEC Group = " << _fecGroups.size() << endl;
+  }
+  cout << simCount * 32 << " patterns simulated." << endl;
 }
 
 void
@@ -103,7 +122,7 @@ CirMgr::fileSim(ifstream& patternFile)
 /*   Private member functions about Simulation   */
 /*************************************************/
 void
-CirMgr::getSimLog(size_t& patNum)
+CirMgr::getSimLog(const size_t patNum)
 {
   /*
   cout << patNum << endl;
