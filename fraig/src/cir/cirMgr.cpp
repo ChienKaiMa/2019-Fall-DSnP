@@ -61,6 +61,20 @@ static CirGate *errGate;
 
 static size_t _globalRef;
 
+struct FECprint {
+   size_t operator () (size_t gId) const {
+      CirGate* myGate = cirMgr->getGate(gId);
+      /*
+      size_t myVal = myGate->getSimValue();
+      if (myVal > ~myVal) {
+         myVal = ~myVal;
+      }
+      return myVal;
+      */
+      return myGate->getSimValue();
+   }
+};
+
 static bool
 parseError(CirParseError err)
 {
@@ -510,6 +524,19 @@ CirMgr::printFloatGates() const
 void
 CirMgr::printFECPairs() const
 {
+   FECprint f;
+   for (size_t i=0; i<_fecGroups.size(); ++i) {
+      cout << "[" << i << "]";
+      size_t comp = f(_fecGroups[i][0]);
+      for (size_t j=0; j<_fecGroups[i].size(); ++j) {
+         cout << " ";
+         if (f(_fecGroups[i][j]) == ~comp) {
+            cout << "!";
+         }
+         cout << _fecGroups[i][j];
+      }
+      cout << endl;
+   }
 }
 
 void

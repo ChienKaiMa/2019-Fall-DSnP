@@ -39,7 +39,7 @@ struct Strash {
 };
 
 struct KeyEqual {
-  bool operator () (AigGate* g1, AigGate* g2) const {
+  bool operator () (const AigGate* g1, const AigGate* g2) const {
     Strash s;
     return s(g1) == s(g2);
   }

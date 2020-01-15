@@ -40,7 +40,9 @@ CirGate::reportGate() const
       cout << "\"" << _mySymbol << "\", line " << _lineNo
        << endl;
    }
-   cout << "= FECs: " << "TODO: printFECGroups" << endl;
+   cout << "= FECs:";
+   printFECGroups();
+   cout << endl;
    cout << "= Value: ";
    printSimValue();
    cout << endl;

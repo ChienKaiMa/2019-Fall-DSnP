@@ -32,14 +32,25 @@ using namespace std;
 struct FEC {
   size_t operator () (size_t gId) const {
     CirGate* myGate = cirMgr->getGate(gId);
-    return myGate->getSimValue();
+    size_t myVal = myGate->getSimValue();
+    if (myVal > ~myVal) {
+      myVal = ~myVal;
+    }
+    return myVal;
   }
 };
 
 struct FKey {
   bool operator () (size_t gId1, size_t gId2) const {
     FEC f;
-    return f(gId1) == f(gId2);
+    //cout << f(gId1) << " " << f(gId2) << endl;
+    return f(gId1) == f(gId2) || f(gId1) == ~f(gId2);
+  }
+};
+
+struct SortKey {
+  bool operator () (vector<size_t>& L1, vector<size_t>& L2) const {
+    return (L1[0] < L2[0]);
   }
 };
 
@@ -75,20 +86,15 @@ CirMgr::fileSim(ifstream& patternFile)
     }
     checkFEC();
   }
-  // TODO: Find FEC Groups
-  
-  checkFEC();
-  if (!_fecGroups.empty()) {
-    cout << "Total #FEC Group = " << _fecGroups.size() << endl;
-  }
-
   if (patNum != 0) {
     totPatNum = (simCount-1) * 64 + patNum;
   } else {
     totPatNum = simCount * 64;
-  }  
+  }
+  if (!_fecGroups.empty()) {
+    cout << "Total #FEC Group = " << _fecGroups.size() << endl;
+  }
   cout << totPatNum << " patterns simulated." << endl;
-  // Save the simValues
 }
 
 /*************************************************/
@@ -151,21 +157,71 @@ void
 CirMgr::checkFEC()
 {
   if (_fecGroups.empty()) {
-    _fecGroups.push_back(_aigList);
+    vector<size_t> myList;
+    myList.push_back(0);
+    myList.insert(myList.end(), _aigList.begin(), _aigList.end());
+    _fecGroups.push_back(myList);
   }
+  vector<vector<size_t>> temp;
   for (size_t i=0; i<_fecGroups.size(); ++i) {
     vector<size_t>& myGroup = _fecGroups[i];
+    unordered_set<size_t, FEC, FKey> FHash;
     for (size_t j=0; j<myGroup.size(); ++j) {
-      unordered_set<size_t, FEC, FKey> FHash;
       auto myPair = FHash.emplace(myGroup[j]);
-      if (j==0) {
-        // Insert it in a new group
-        // It is strange
-      }
       if (!myPair.second) {
-        // The same hash as j==0
+        // The same hash as someone
         // Delete it here and insert it in another group
+        bool isInsert = false;
+        for (size_t k=0; k<temp.size(); ++k) {
+          if (temp[k][0] == *(myPair.first)) {
+            temp[k].push_back(myGroup[j]);
+            isInsert = true;
+            break;
+          }
+        }
+        if (!isInsert) {
+          vector<size_t> smallGroup;
+          smallGroup.push_back(*(myPair.first));
+          smallGroup.push_back(myGroup[j]);
+          temp.push_back(smallGroup);
+        }
       }
+    }
+  }
+  for (size_t i=0; i < temp.size(); ++i) {
+    ::sort((temp[i]).begin(), temp[i].end());
+  }
+  SortKey s;
+  ::sort(temp.begin(), temp.end(), s);
+
+  _fecGroups = temp;
+}
+
+vector<size_t>
+CirMgr::findFECGroup(const CirGate* g) const
+{
+  for (size_t i=0; i<_fecGroups.size(); ++i) {
+    FEC f;
+    if (f(_fecGroups[i][0]) == f(g->_gateId)) {
+      return _fecGroups[i];
+    }
+  }
+  return vector<size_t>();
+}
+
+void
+CirGate::printFECGroups() const
+{
+  vector<size_t> myGroup = cirMgr->findFECGroup(this);
+  for (size_t i=0; i<myGroup.size(); ++i) {
+    if (myGroup[i] != _gateId) {
+      CirGate* myGate = cirMgr->getGate(myGroup[i]);
+      size_t myVal = myGate->getSimValue();
+      cout << " ";
+      if (myVal = ~SimValue) {
+        cout << "!";
+      }
+      cout << myGroup[i];
     }
   }
 }

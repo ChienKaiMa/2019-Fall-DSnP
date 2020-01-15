@@ -71,6 +71,7 @@ public:
    void printFECPairs() const;
    void writeAag(ostream&) const;
    void writeGate(ostream&, CirGate*) const;
+   vector<size_t> findFECGroup(const CirGate*) const;
 
 private:
    // Maximal variable index, # of PIs, # of latches, # of POs, # of AIGs
